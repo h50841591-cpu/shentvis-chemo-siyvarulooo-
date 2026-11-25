@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>მარი ლომიძე ❤️</title>
+<style>
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c" role="img" aria-label="მარი ლომიძე მიყვარხარ"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const font = s => `bold ${s}px Arial, sans-serif`;
+
+// გულის კონტური (1000×900 ველზე)
+function point(t, k = 1) {
+    const x = 16 * Math.sin(t) ** 3;
+    const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+    return [500 + x * 29 * k, 450 - (y + 2.5) * 29 * k];
+}
+const shape = new Path2D();
+for (let i = 0; i <= 360; i++) shape.lineTo(...point(i * Math.PI / 180));
+
+const words = [];
+// ამატებს სიტყვას, თუ გულში ეტევა და სხვას არ ფარავს
+function place(text, size, x, y) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.font = font(size);
+    const w = ctx.measureText(text).width, a = w / 2, b = size * 0.55;
+    const fits = [[-a,-b], [0,-b], [a,-b], [-a,b], [0,b], [a,b]]
+        .every(([dx, dy]) => ctx.isPointInPath(shape, x + dx, y + dy));
+    const free = words.every(o =>
+        Math.abs(o.x - x) > o.a + a + 5 || Math.abs(o.y - y) > o.b + b + 1);
+    if (fits && free) words.push({ text, size, x, y, a, b });
+}
+let n = 0;
+const next = () => ['მარი ლომიძე', 'მიყვარხარ'][n++ % 2];
+
+// 1. ჯერ კონტური, რიგრიგობით
+for (let t = 0.05; t < 2 * Math.PI; t += 0.025) {
+    const text = next(), size = 19 + Math.random() * 7;
+    for (let k = 0.97; k > 0.84; k -= 0.02) {
+        const before = words.length;
+        place(text, size, ...point(t, k));
+        if (words.length > before) break;
+    }
+}
+const edge = words.length;
+
+// 2. შემდეგ შიგთავსი, შემთხვევითი თანმიმდევრობით
+for (let i = 0; i < 14000; i++) {
+    const size = i < 7000 ? 18 + Math.random() * 8 : 13 + Math.random() * 5;
+    place(next(), size, 30 + Math.random() * 940, 30 + Math.random() * 840);
+}
+const inner = words.slice(edge).sort(() => Math.random() - 0.5);
+words.splice(edge, inner.length, ...inner);
+words.forEach((w, i) => w.delay = i < edge
+    ? i / edge * 6
+    : 6 + (i - edge) / inner.length * 10);
+
+let W, H, ratio;
+function resize() {
+    ratio = window.devicePixelRatio || 1;
+    W = innerWidth; H = innerHeight;
+    canvas.width = W * ratio; canvas.height = H * ratio;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+}
+addEventListener('resize', resize);
+resize();
+
+let began;
+function frame(now) {
+    began ??= now;
+    const t = (now - began) / 1000;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const s = Math.min(W / 980, H / 900);
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(s, s);
+    ctx.translate(-500, -450);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#ff1f2d';
+    ctx.shadowBlur = 6;
+
+    for (const w of words) {
+        const age = t - w.delay;
+        if (age < 0) continue;
+        const k = Math.min(1, age / 0.7);   // თეთრი -> წითელი
+        ctx.globalAlpha = Math.min(1, age / 0.25);
+        ctx.fillStyle = `rgb(255, ${225 - 166 * k}, ${230 - 182 * k})`;
+        ctx.font = font(w.size);
+        ctx.fillText(w.text, w.x, w.y);
+    }
+    requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// შეხებით თავიდან იწყება
+addEventListener('pointerdown', () => began = undefined);
+</script>
+</body>
+</html>
